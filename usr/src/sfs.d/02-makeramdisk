@@ -1,0 +1,28 @@
+#!/bin/sh
+
+: ${lbu:=/opt/LiveBootUtils}
+. "$lbu/scripts/common.func"
+
+set -e
+
+test -n "$DESTDIR" || { echo "need to define DESTDIR in environment" >&2; exit 1; }
+test -d "$DESTDIR/lib/modules" || { echo "DESTDIR must contain valid kernel" >&2; exit 1; }
+
+: ${MAKERD_SRC:=$(dl_file https://github.com/korc/make-ramdisk.git)}
+
+for d in "$DESTDIR"/lib/modules/*;do
+  kver="${d##*/}"
+  depmod -b "$DESTDIR" "$kver"
+  clean_modules=""
+  test -d "/lib/modules/$kver/modules.dep" || {
+    mkdir -p "/lib/modules/$kver"
+    mount --bind "$d" "/lib/modules/$kver"
+    clean_modules=1
+  }
+  make -C "$MAKERD_SRC" KVERS="$kver" RAMDISK="$DESTDIR/boot/ramdisk-$kver"
+  make -C "$MAKERD_SRC" KVERS="$kver" NET=1 RAMDISK="$DESTDIR/boot/ramdisk_net-$kver"
+  test -z "$clean_modules" || {
+    umount "/lib/modules/$kver"
+    rmdir "/lib/modules/$kver"
+  }
+done

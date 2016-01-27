@@ -1,0 +1,14 @@
+#!/bin/sh
+
+: ${lbu:=/opt/LiveBootUtils}
+: ${target_dist:=jessie-backports}
+
+test -n "$DESTDIR" || { echo "need to define DESTDIR in environment" >&2; exit 1; }
+
+set -x
+
+export target_dist
+
+"$lbu"/scripts/apt-sfs.sh -x ^initramfs "$DESTDIR" linux-image-amd64 linux-headers-amd64 "$@"
+
+depmod -b "$DESTDIR" "$(find "$DESTDIR"/lib/modules -mindepth 1 -maxdepth 1 -printf "%f\n")"
